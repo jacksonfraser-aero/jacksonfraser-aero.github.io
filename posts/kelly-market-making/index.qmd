@@ -1,8 +1,8 @@
 ---
-title: "How Much Should You Bet? The Kelly Criterion, Simulated"
+title: "Kelly Betting, Adverse Selection, and a Market Maker That Learns"
 date: 2026-07-18
 categories: [python, simulation, betting]
-description: "Monte Carlo simulation of bankroll growth, risk of ruin, and why practitioners bet less than the maths says."
+description: "Monte Carlo studies of bet sizing under estimated edges, market making against informed flow, and a Q-learning agent that recovers half the value of Bayesian quoting from four crude features."
 ---
 
 ## Abstract {.unnumbered}
