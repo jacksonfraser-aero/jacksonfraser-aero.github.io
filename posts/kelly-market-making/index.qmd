@@ -276,6 +276,27 @@ training budget, a good inductive bias is hard to out-learn. Its
 out-of-distribution decay (trained at 30%, weaker at the extremes) is visible
 and expected.
 
+### Policy inspection
+
+Opening the trained table yielded three findings. (1) A design
+discovery: the maker is counterparty to every fill, so flow imbalance
+and inventory are deterministically linked (inventory equals negative
+imbalance); the observation has three effective degrees of freedom,
+not the four designed, explaining the 29% state coverage. (2)
+Q-values are dominated by state value: in many well-visited cells the
+best action's margin is within estimation noise, so policy maps mask
+indifferent cells -- the *value function* is learned much more
+precisely than the *policy*, a known property of small action gaps
+under noisy rewards. (3) The decisive cells show rediscovered
+flow-following (directional correlation $+0.33$ with the Bayesian
+maker's empirical behaviour over 34 significant cells) together with
+a learned reversion floor: the agent quotes back upward into heavy
+sell flow once its centre falls below the plausible support of $V$,
+structure it inferred from experience rather than being told.
+
+![Learned policy (masked where indifferent) beside the Bayesian
+maker's empirical behaviour.](figures/policy_heatmap.png)
+
 ## Discussion and limitations
 
 Three threads tie the sections together. First, *information asymmetry has a
@@ -301,8 +322,8 @@ correlated simultaneous bets (portfolio Kelly) remain on the roadmap.
 
 Policy inspection (heatmaps of the learned greedy action over
 imbalance-by-centre slices, compared with the Bayesian maker's behaviour);
-ablations (sparse versus dense reward; removing the flow-imbalance feature,
-which should collapse the agent to inventory management); a DQN on the
+ablations (sparse versus dense reward; removing the flow-imbalance
+feature, which the degeneracy finding predicts should now cost nothing); a DQN on the
 identical environment via stable-baselines3, relaxing the discretisation; an
 adaptive Bayesian maker that infers $\phi$ online; and the portfolio Kelly
 extension connecting Section 1 to multi-asset allocation.
