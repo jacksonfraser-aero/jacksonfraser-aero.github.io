@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="dcterms.date" content="2026-07-18">
-<meta name="description" content="Monte Carlo simulation of bankroll growth, risk of ruin, and why practitioners bet less than the maths says.">
+<meta name="description" content="Monte Carlo studies of bet sizing under estimated edges, market making against informed flow, and a Q-learning agent that recovers half the value of Bayesian quoting from four crude features.">
 
-<title>How Much Should You Bet? The Kelly Criterion, Simulated – Jackson Fraser</title>
+<title>Kelly Betting, Adverse Selection, and a Market Maker That Learns – Jackson Fraser</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -184,10 +184,10 @@ window.Quarto = {
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <div class="quarto-title-block"><div><h1 class="title">How Much Should You Bet? The Kelly Criterion, Simulated</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+      <div class="quarto-title-block"><div><h1 class="title">Kelly Betting, Adverse Selection, and a Market Maker That Learns</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
                   <div>
         <div class="description">
-          Monte Carlo simulation of bankroll growth, risk of ruin, and why practitioners bet less than the maths says.
+          Monte Carlo studies of bet sizing under estimated edges, market making against informed flow, and a Q-learning agent that recovers half the value of Bayesian quoting from four crude features.
         </div>
       </div>
                           <div class="quarto-categories">
@@ -1049,10 +1049,10 @@ Q(s,a) \leftarrow Q(s,a) + \alpha\left[r + \gamma \max_{a'} Q(s',a') - Q(s,a)\ri
   });
   </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "How Much Should You Bet? The Kelly Criterion, Simulated"</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Kelly Betting, Adverse Selection, and a Market Maker That Learns"</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-07-18</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="an">categories:</span><span class="co"> [python, simulation, betting]</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Monte Carlo simulation of bankroll growth, risk of ruin, and why practitioners bet less than the maths says."</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Monte Carlo studies of bet sizing under estimated edges, market making against informed flow, and a Q-learning agent that recovers half the value of Bayesian quoting from four crude features."</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">## Abstract {.unnumbered}</span></span>
