@@ -297,6 +297,18 @@ structure it inferred from experience rather than being told.
 ![Learned policy (masked where indifferent) beside the Bayesian
 maker's empirical behaviour.](figures/policy_heatmap.png)
 
+**Ablation: reward density.** The dense per-fill reward and a sparse
+settlement-only reward have an *identical* total per episode -- the
+only difference is when the agent receives it. Dense reaches its
+plateau ($\approx 54$) within roughly 2,000 episodes; sparse
+eventually reaches a comparable level ($\approx 43$) but only after a
+catastrophic early dip to $-230$ and roughly four times the episodes
+to stabilise. Same objective, same algorithm -- the gap is entirely
+the cost of credit assignment across 100 undifferentiated steps.
+
+![Reward density ablation: identical objective, different per-step
+feedback.](figures/reward_density_ablation.png)
+
 ## Discussion and limitations
 
 Three threads tie the sections together. First, *information asymmetry has a
@@ -320,10 +332,8 @@ correlated simultaneous bets (portfolio Kelly) remain on the roadmap.
 
 ## Future work
 
-Policy inspection (heatmaps of the learned greedy action over
-imbalance-by-centre slices, compared with the Bayesian maker's behaviour);
-ablations (sparse versus dense reward; removing the flow-imbalance
-feature, which the degeneracy finding predicts should now cost nothing); a DQN on the
+Removing the redundant flow-imbalance feature (the degeneracy finding
+predicts this should now cost nothing); a DQN on the
 identical environment via stable-baselines3, relaxing the discretisation; an
 adaptive Bayesian maker that infers $\phi$ online; and the portfolio Kelly
 extension connecting Section 1 to multi-asset allocation.
