@@ -1,6 +1,5 @@
 ---
 title: "Does Wind Really Kill Golf Demand? Separating Weather from Seasonality"
-date: 2026-07-18
 categories: [python, statistics, research]
 description: "Building a weather-to-revenue model for a links golf course — and why the obvious answer is confounded."
 ---

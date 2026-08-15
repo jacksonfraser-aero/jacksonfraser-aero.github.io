@@ -4,6 +4,6 @@ listing:
   contents: posts
   sort: "date desc"
   type: default
-  fields: [date, title, description, reading-time]
+  fields: [title, description, reading-time]
 page-layout: full
 ---

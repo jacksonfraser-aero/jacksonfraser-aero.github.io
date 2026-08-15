@@ -1,0 +1,416 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Does Wind Really Kill Golf Demand? Separating Weather from Seasonality\"\n",
+        "date: 2026-07-18\n",
+        "categories: [python, statistics, research]\n",
+        "description: \"Building a weather-to-revenue model for a links golf course — and why the obvious answer is confounded.\"\n",
+        "---\n",
+        "\n",
+        "## The question\n",
+        "\n",
+        "I work in golf operations at a links course in Scotland. Links golf is played\n",
+        "on exposed coastal ground, and the operational folklore is unanimous: wind is\n",
+        "the demand killer. Pricing conversations, discounting decisions, and staffing\n",
+        "assumptions all lean on that belief.\n",
+        "\n",
+        "I wanted to know whether the data agrees — and it turns out the honest answer\n",
+        "requires being careful about seasonality, because wet, windy days cluster in\n",
+        "exactly the months when nobody plays golf anyway.\n",
+        "\n",
+        "**Data transparency:** the weather data below is real (Open-Meteo historical\n",
+        "archive, St Andrews). The booking data is **simulated** — calibrated using my\n",
+        "experience working in golf operations, with illustrative prices and\n",
+        "capacities. The methodology mirrors a private analysis I ran on ~6 months of\n",
+        "real daily operations data that I collected myself; that dataset isn't\n",
+        "published because it belongs to my employer. Everything below is fully\n",
+        "reproducible."
+      ],
+      "id": "23dee475"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "import requests\n",
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "import matplotlib.pyplot as plt\n",
+        "import seaborn as sns\n",
+        "import statsmodels.formula.api as smf"
+      ],
+      "id": "4ba2c9fe",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Weather data\n",
+        "\n",
+        "Three years of daily weather for St Andrews from the Open-Meteo archive:\n",
+        "maximum temperature, total rainfall, maximum wind speed, and sunshine hours."
+      ],
+      "id": "e36c462f"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "url = \"https://archive-api.open-meteo.com/v1/archive\"\n",
+        "params = {\n",
+        "    \"latitude\": 56.34,\n",
+        "    \"longitude\": -2.79,\n",
+        "    \"start_date\": \"2023-01-01\",\n",
+        "    \"end_date\": \"2025-12-31\",\n",
+        "    \"daily\": \"temperature_2m_max,precipitation_sum,wind_speed_10m_max,sunshine_duration\",\n",
+        "    \"timezone\": \"Europe/London\",\n",
+        "}\n",
+        "r = requests.get(url, params=params, timeout=60)\n",
+        "weather = pd.DataFrame(r.json()[\"daily\"])\n",
+        "weather[\"time\"] = pd.to_datetime(weather[\"time\"])\n",
+        "weather[\"sunshine_hours\"] = weather[\"sunshine_duration\"] / 3600\n",
+        "weather = weather.drop(columns=[\"sunshine_duration\"])\n",
+        "weather.head()"
+      ],
+      "id": "5288b1ba",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Simulated bookings\n",
+        "\n",
+        "The demand generator bakes in the structure you'd expect from a Scottish\n",
+        "links course: strong summer seasonality, a weekend uplift, a rain penalty, a\n",
+        "wind penalty that only bites above a threshold, a temperature effect, and\n",
+        "noise. Revenue combines seasonal green fees with per-round ancillary spend."
+      ],
+      "id": "c04027d7"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "rng = np.random.default_rng(42)\n",
+        "df = weather.copy()\n",
+        "\n",
+        "# --- illustrative assumptions ---\n",
+        "BASE_ROUNDS = 120\n",
+        "SEASONAL_AMPLITUDE = 80\n",
+        "WEEKEND_UPLIFT = 15\n",
+        "RAIN_PENALTY = -3.5\n",
+        "WIND_THRESHOLD = 20\n",
+        "WIND_PENALTY = -1.2\n",
+        "TEMP_EFFECT = 1.5\n",
+        "# --------------------------------\n",
+        "\n",
+        "day_of_year = df[\"time\"].dt.dayofyear\n",
+        "seasonal = BASE_ROUNDS + SEASONAL_AMPLITUDE * np.sin((day_of_year - 105) / 365 * 2 * np.pi)\n",
+        "weekend = df[\"time\"].dt.dayofweek.isin([5, 6]).astype(int) * WEEKEND_UPLIFT\n",
+        "rain = RAIN_PENALTY * df[\"precipitation_sum\"]\n",
+        "wind = WIND_PENALTY * (df[\"wind_speed_10m_max\"] - WIND_THRESHOLD).clip(lower=0)\n",
+        "temp = TEMP_EFFECT * (df[\"temperature_2m_max\"] - 10)\n",
+        "noise = rng.normal(0, 12, len(df))\n",
+        "\n",
+        "df[\"rounds\"] = (seasonal + weekend + rain + wind + temp + noise).clip(lower=0).round()\n",
+        "\n",
+        "green_fee = np.where(df[\"time\"].dt.month.isin([5, 6, 7, 8, 9]), 150, 90)\n",
+        "ancillary = rng.normal(22, 5, len(df))\n",
+        "df[\"revenue\"] = (df[\"rounds\"] * green_fee + df[\"rounds\"] * ancillary).round(2)\n",
+        "\n",
+        "df[[\"rounds\", \"revenue\"]].describe()"
+      ],
+      "id": "690856cd",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Note what's hidden in the generator: the *true* wind effect is a threshold\n",
+        "effect — wind does nothing until it exceeds 20 km/h. That detail matters\n",
+        "later.\n",
+        "\n",
+        "## Exploration"
+      ],
+      "id": "07171844"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "fig, ax = plt.subplots(figsize=(12, 4))\n",
+        "ax.plot(df[\"time\"], df[\"rounds\"], lw=0.7)\n",
+        "ax.set_title(\"Daily rounds played (simulated)\")\n",
+        "ax.set_ylabel(\"Rounds\")\n",
+        "plt.tight_layout()"
+      ],
+      "id": "ef7cafad",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "fig, ax = plt.subplots(1, 2, figsize=(12, 4.5))\n",
+        "\n",
+        "sns.regplot(data=df, x=\"precipitation_sum\", y=\"rounds\", ax=ax[0],\n",
+        "            scatter_kws={\"alpha\": 0.3})\n",
+        "sns.regplot(data=df, x=\"wind_speed_10m_max\", y=\"rounds\", ax=ax[1],\n",
+        "            scatter_kws={\"alpha\": 0.3})\n",
+        "\n",
+        "ax[0].set_title(\"Rounds vs daily rainfall (simulated bookings)\")\n",
+        "ax[0].set_xlabel(\"Daily rainfall (mm)\")\n",
+        "ax[0].set_ylabel(\"Rounds played\")\n",
+        "ax[1].set_title(\"Rounds vs max wind speed (simulated bookings)\")\n",
+        "ax[1].set_xlabel(\"Max wind speed (km/h)\")\n",
+        "ax[1].set_ylabel(\"Rounds played\")\n",
+        "\n",
+        "for a in ax:\n",
+        "    a.set_ylim(bottom=0)\n",
+        "\n",
+        "plt.tight_layout()"
+      ],
+      "id": "efad559f",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The raw scatter plots overstate weather effects: wet and windy days cluster\n",
+        "in winter, when demand is low for seasonal reasons. Wind gets credit for\n",
+        "damage the calendar is doing."
+      ],
+      "id": "0b2b0023"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "df[\"month\"] = df[\"time\"].dt.month\n",
+        "\n",
+        "fig, ax = plt.subplots(figsize=(10, 4))\n",
+        "sns.boxplot(data=df, x=\"month\", y=\"rounds\", ax=ax)\n",
+        "ax.set_title(\"Rounds by month\")\n",
+        "plt.tight_layout()\n",
+        "\n",
+        "cols = [\"temperature_2m_max\", \"precipitation_sum\", \"wind_speed_10m_max\",\n",
+        "        \"sunshine_hours\", \"rounds\", \"revenue\"]\n",
+        "fig, ax = plt.subplots(figsize=(7, 5))\n",
+        "sns.heatmap(df[cols].corr(), annot=True, fmt=\".2f\", cmap=\"vlag\", center=0, ax=ax)\n",
+        "plt.tight_layout()"
+      ],
+      "id": "5cece5cc",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## The regression\n",
+        "\n",
+        "The model controls for month and weekend effects before asking what weather\n",
+        "adds on the margin."
+      ],
+      "id": "32e2cb3f"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "df[\"is_weekend\"] = df[\"time\"].dt.dayofweek.isin([5, 6]).astype(int)\n",
+        "\n",
+        "model = smf.ols(\n",
+        "    \"rounds ~ precipitation_sum + wind_speed_10m_max + temperature_2m_max \"\n",
+        "    \"+ sunshine_hours + is_weekend + C(month)\",\n",
+        "    data=df,\n",
+        ").fit()\n",
+        "print(model.summary())"
+      ],
+      "id": "52cde7fe",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "With seasonality controlled, every millimetre of rain costs about 3 rounds.\n",
+        "Wind is significant here too — but the linear specification treats every\n",
+        "km/h of wind equally, while the generator only penalises wind above a\n",
+        "threshold. A specification that matches that mechanism:"
+      ],
+      "id": "fb62613b"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "df[\"wind_excess\"] = (df[\"wind_speed_10m_max\"] - 35).clip(lower=0)\n",
+        "\n",
+        "model2 = smf.ols(\n",
+        "    \"rounds ~ precipitation_sum + wind_excess + temperature_2m_max \"\n",
+        "    \"+ sunshine_hours + is_weekend + C(month)\",\n",
+        "    data=df,\n",
+        ").fit()\n",
+        "print(model2.summary())"
+      ],
+      "id": "eb51dd30",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The threshold value here is illustrative; on real tee-sheet data, this is\n",
+        "the specification you'd use to test whether wind bites only on the most\n",
+        "extreme days — which is what my private analysis suggested: once\n",
+        "seasonality was properly controlled, ordinary wind had no independent\n",
+        "effect. On a links course, \"it's windy\" is mostly just another way of\n",
+        "saying \"it's November.\"\n",
+        "\n",
+        "## Revenue impact\n",
+        "\n",
+        "What's the rain effect worth? Using the rain coefficient and 2024's actual\n",
+        "rainfall:"
+      ],
+      "id": "422b8bd4"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "rain_coef = abs(model.params[\"precipitation_sum\"])\n",
+        "df[\"rain_lost_rounds\"] = rain_coef * df[\"precipitation_sum\"]\n",
+        "\n",
+        "rev_per_round = 100    # illustrative blended revenue per round\n",
+        "recovery_rate = 0.25   # share of lost rounds recoverable via standby pricing\n",
+        "standby_discount = 0.6 # standby price as share of full price\n",
+        "\n",
+        "annual = df[df[\"time\"].dt.year == 2024]\n",
+        "lost = annual[\"rain_lost_rounds\"].sum()\n",
+        "\n",
+        "print(f\"Estimated rounds lost to rain (2024): {lost:.0f}\")\n",
+        "print(f\"Estimated revenue at risk: £{lost * rev_per_round:,.0f}\")\n",
+        "print(f\"Recoverable via rain-triggered standby pricing: £{lost * recovery_rate * rev_per_round * standby_discount:,.0f}\")"
+      ],
+      "id": "52273016",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "And a sensitivity table, because the recovery assumptions are doing a lot\n",
+        "of work:"
+      ],
+      "id": "9703d17a"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "rows = []\n",
+        "for rec in [0.10, 0.25, 0.40]:\n",
+        "    for disc in [0.5, 0.6, 0.7]:\n",
+        "        rows.append({\"recovery_rate\": rec, \"standby_price_pct\": disc,\n",
+        "                     \"annual_recovery_£\": round(lost * rec * rev_per_round * disc)})\n",
+        "pd.DataFrame(rows).pivot(index=\"recovery_rate\", columns=\"standby_price_pct\",\n",
+        "                         values=\"annual_recovery_£\")"
+      ],
+      "id": "2f9a6c33",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The commercial conclusion is direction, not the specific numbers: price\n",
+        "against the rain forecast, not the wind forecast — and if you discount\n",
+        "windy days, you're giving margin away on days that would have filled anyway.\n",
+        "\n",
+        "## Model validation"
+      ],
+      "id": "b97c2819"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "fig, ax = plt.subplots(1, 2, figsize=(12, 4))\n",
+        "\n",
+        "ax[0].scatter(model.fittedvalues, model.resid, alpha=0.3)\n",
+        "ax[0].axhline(0, color=\"red\", lw=1)\n",
+        "ax[0].set_xlabel(\"Fitted values\")\n",
+        "ax[0].set_ylabel(\"Residual\")\n",
+        "ax[0].set_title(\"Residuals vs fitted\")\n",
+        "\n",
+        "ax[1].plot(df[\"time\"], model.resid, lw=0.6)\n",
+        "ax[1].axhline(0, color=\"red\", lw=1)\n",
+        "ax[1].set_title(\"Residuals over time\")\n",
+        "plt.tight_layout()"
+      ],
+      "id": "0313712c",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Two things worth noticing. The residuals form a shapeless cloud around zero\n",
+        "— roughly constant variance. But the Durbin–Watson statistic (~1.3)\n",
+        "indicates positive autocorrelation: residuals on consecutive days share the\n",
+        "same sign. Since the simulation's noise is independent by construction,\n",
+        "that autocorrelation is model misspecification — the month dummies\n",
+        "approximate a smooth seasonal curve in steps, leaving slow-moving structure\n",
+        "behind. A useful illustration of Durbin–Watson detecting unmodelled\n",
+        "structure rather than noisy data.\n",
+        "\n",
+        "There's also a diagonal streak in the bottom-left of the residuals-vs-fitted\n",
+        "plot: days where the model predicts *negative* rounds. Demand is censored\n",
+        "at zero while a linear model is unbounded, so residuals land exactly on the\n",
+        "line residual = −fitted. With many zero-demand days, a censored (Tobit)\n",
+        "model would be more appropriate; here it's confined to a handful of extreme\n",
+        "winter days.\n",
+        "\n",
+        "## What building this taught me\n",
+        "\n",
+        "The regression is the easy part. The judgement calls are the parts nobody\n",
+        "teaches: recognising that the raw correlations are confounded, choosing a\n",
+        "specification that matches the mechanism you're testing, and reading the\n",
+        "diagnostics honestly instead of stopping at a big R². And the most useful\n",
+        "finding — in the prxivate version of this analysis — was a null result: the\n",
+        "variable everyone believed in did nothing once you controlled for the\n",
+        "calendar."
+      ],
+      "id": "893546ec"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "flightsim",
+      "language": "python",
+      "display_name": "Python (flightsim)",
+      "path": "/Users/jacksonfraser/Library/Jupyter/kernels/flightsim"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
