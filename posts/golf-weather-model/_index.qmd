@@ -1,4 +1,5 @@
 ---
+draft: true
 title: "Does Wind Really Kill Golf Demand? Separating Weather from Seasonality"
 categories: [python, statistics, research]
 description: "Building a weather-to-revenue model for a links golf course — and why the obvious answer is confounded."
@@ -16,12 +17,10 @@ requires being careful about seasonality, because wet, windy days cluster in
 exactly the months when nobody plays golf anyway.
 
 **Data transparency:** the weather data below is real (Open-Meteo historical
-archive, St Andrews). The booking data is **simulated** — calibrated using my
-experience working in golf operations, with illustrative prices and
-capacities. The methodology mirrors a private analysis I ran on ~6 months of
-real daily operations data that I collected myself; that dataset isn't
-published because it belongs to my employer. Everything below is fully
-reproducible.
+archive, St Andrews). The booking data is **simulated**: the effect sizes,
+prices and capacities are illustrative values chosen from my experience
+working in golf operations, not estimated from any real booking data.
+Everything below is fully reproducible.
 
 ```{python}
 import requests
@@ -181,10 +180,9 @@ print(model2.summary())
 
 The threshold value here is illustrative; on real tee-sheet data, this is
 the specification you'd use to test whether wind bites only on the most
-extreme days — which is what my private analysis suggested: once
-seasonality was properly controlled, ordinary wind had no independent
-effect. On a links course, "it's windy" is mostly just another way of
-saying "it's November."
+extreme days. In this simulation, once seasonality is controlled, ordinary
+wind adds little on its own: on a links course, "it's windy" is mostly
+just another way of saying "it's November."
 
 ## Revenue impact
 
