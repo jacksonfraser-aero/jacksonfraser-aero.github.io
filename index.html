@@ -246,22 +246,7 @@ window.Quarto = {
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
 <div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-categories="cHl0aG9uJTJDc3RhdGlzdGljcyUyQ3Jlc2VhcmNo" data-listing-file-modified-sort="1786788243170" data-listing-reading-time-sort="6" data-listing-word-count-sort="1104">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/golf-weather-model/index.html" class="no-external">Does Wind Really Kill Golf Demand? Separating Weather from Seasonality</a>
-</h3>
-<div class="delink listing-description"><a href="./posts/golf-weather-model/index.html" class="no-external">
-<p>Building a weather-to-revenue model for a links golf course — and why the obvious answer is confounded.</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/golf-weather-model/index.html" class="no-external">
-<div class="listing-reading-time">6 min</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="1" data-categories="cHl0aG9uJTJDc2ltdWxhdGlvbiUyQ2JldHRpbmc=" data-listing-file-modified-sort="1786788244275" data-listing-reading-time-sort="12" data-listing-word-count-sort="2236">
+<div class="quarto-post image-right" data-index="0" data-categories="cHl0aG9uJTJDc2ltdWxhdGlvbiUyQ2JldHRpbmc=" data-listing-file-modified-sort="1786788244275" data-listing-reading-time-sort="12" data-listing-word-count-sort="2236">
 <div class="body">
 <h3 class="no-anchor listing-title">
 <a href="./posts/kelly-market-making/index.html" class="no-external">Kelly Betting, Adverse Selection, and a Market Maker That Learns</a>
@@ -403,7 +388,7 @@ window.Quarto = {
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp("https:\/\/jacksonfraser-aero\.github\.io\/");
+        var filterRegex = new RegExp('/' + window.location.host + '/');
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
